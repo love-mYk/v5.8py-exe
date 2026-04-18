@@ -1,0 +1,56 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+
+      - name: Check syntax
+        run: |
+          python -m py_compile v5.8.py
+        shell: bash
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pyinstaller --noconfirm --clean v5.8.spec
+
+      - name: Show output size
+        run: |
+          du -sh dist/WellCorrelator/
+        shell: bash
+
+      - name: Package for release
+        if: github.event_name == 'release'
+        run: |
+          Compress-Archive -Path "dist/WellCorrelator/*" -DestinationPath "WellCorrelator-v5.8-win64.zip" -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WellCorrelator-win64
+          path: dist/WellCorrelator/
+          retention-days: 30
+
+      - name: Upload release asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: WellCorrelator-v5.8-win64.zip
